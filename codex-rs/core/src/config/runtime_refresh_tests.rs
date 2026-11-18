@@ -355,3 +355,23 @@ async fn mcp_refresh_updates_session_plugins_and_apps(
         initial_layer_count
     );
 }
+
+#[tokio::test]
+async fn advisor_selection_reloads_without_changing_the_parent_model() {
+    let (_home, base) = base_config().await;
+    assert_eq!(base.advisor_model, None);
+
+    let configured = layered_config(&base, "advisor_model = 'advisor-example'", "", "", "").await;
+    let enabled = base
+        .resolve_runtime_refresh(&configured, RuntimeConfigRefresh::User)
+        .unwrap();
+    assert_eq!(enabled.advisor_model.as_deref(), Some("advisor-example"));
+    assert_eq!(enabled.model, base.model);
+
+    let configured = layered_config(&base, "advisor_model = 'off'", "", "", "").await;
+    let disabled = enabled
+        .resolve_runtime_refresh(&configured, RuntimeConfigRefresh::User)
+        .unwrap();
+    assert_eq!(disabled.advisor_model.as_deref(), Some("off"));
+    assert_eq!(disabled.model, base.model);
+}

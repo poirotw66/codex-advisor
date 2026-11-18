@@ -29,6 +29,7 @@ pub enum SlashCommand {
     Import,
     Hooks,
     Review,
+    Advisor,
     Rename,
     New,
     Archive,
@@ -99,6 +100,7 @@ impl SlashCommand {
             SlashCommand::Compact => "summarize conversation to prevent hitting the context limit",
             SlashCommand::Recap => "summarize the current conversation now",
             SlashCommand::Review => "review my current changes and find issues",
+            SlashCommand::Advisor => "show, set, or turn off the second-opinion model",
             SlashCommand::Rename => "rename the current thread",
             SlashCommand::Resume => "resume a saved chat",
             SlashCommand::Archive => "archive this session",
@@ -171,6 +173,7 @@ impl SlashCommand {
         matches!(
             self,
             SlashCommand::Review
+                | SlashCommand::Advisor
                 | SlashCommand::Model
                 | SlashCommand::Permissions
                 | SlashCommand::Title
@@ -263,6 +266,7 @@ impl SlashCommand {
             | SlashCommand::Memories
             | SlashCommand::Import
             | SlashCommand::Review
+            | SlashCommand::Advisor
             | SlashCommand::Plan
             | SlashCommand::Cd
             | SlashCommand::Clear
@@ -337,6 +341,14 @@ mod tests {
     use std::str::FromStr;
 
     use super::SlashCommand;
+
+    #[test]
+    fn advisor_is_a_builtin_command_with_inline_arguments() {
+        let command = SlashCommand::from_str("advisor").expect("advisor command");
+        assert_eq!(command, SlashCommand::Advisor);
+        assert!(command.supports_inline_args());
+        assert!(!command.available_during_task());
+    }
 
     #[test]
     fn stop_command_is_canonical_name() {

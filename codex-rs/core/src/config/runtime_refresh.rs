@@ -30,6 +30,7 @@ pub(crate) enum RuntimeConfigRefresh {
 #[derive(Default, Deserialize)]
 #[serde(default)]
 struct McpRefreshToml {
+    advisor_model: Option<String>,
     features: Option<FeaturesToml>,
     plugins: codex_config::types::PluginsConfigToml,
     #[serde(rename = "apps")]
@@ -148,6 +149,9 @@ impl Config {
                 }),
         );
         let mut config = self.clone();
+        if !matches!(scope, RuntimeConfigRefresh::Mcp) {
+            config.advisor_model = cfg.advisor_model;
+        }
         if !matches!(scope, RuntimeConfigRefresh::UserFiles) {
             config.runtime_feature_defaults = incoming.runtime_feature_defaults.clone();
             config.mcp_optional_startup_grace = incoming.mcp_optional_startup_grace;

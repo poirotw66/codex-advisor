@@ -131,6 +131,7 @@ use crate::context::ContextualUserFragment;
 use crate::cyber_access_program;
 use crate::feedback_tags;
 use crate::responses_metadata::CodexResponsesMetadata;
+use crate::responses_metadata::CodexResponsesRequestKind;
 use crate::responses_metadata::subagent_header_value;
 use crate::util::emit_feedback_auth_recovery_tags;
 use codex_feedback::FeedbackRequestTags;
@@ -710,6 +711,12 @@ impl ModelClient {
 
     /// The caller's policy controls the request body independently of the session-id header.
     fn prompt_cache_key(&self, metadata: &CodexResponsesMetadata) -> Option<String> {
+        if matches!(
+            metadata.request_kind,
+            Some(CodexResponsesRequestKind::Advisor)
+        ) {
+            return None;
+        }
         match &self.prompt_cache_key_policy {
             PromptCacheKey::SessionDerived => Some(self.session_derived_cache_key(metadata)),
             PromptCacheKey::Custom(key) => Some(key.clone()),
@@ -734,7 +741,12 @@ impl ModelClient {
     // ChatGPT derives cache affinity from the Responses session-id header. Keep the
     // actual session identity in turn metadata, hooks, and history/notes requests.
     fn responses_session_id(&self, metadata: &CodexResponsesMetadata) -> String {
-        if self.state.session_source.is_non_root_agent() {
+        if self.state.session_source.is_non_root_agent()
+            || matches!(
+                metadata.request_kind,
+                Some(CodexResponsesRequestKind::Advisor)
+            )
+        {
             metadata.session_id.clone()
         } else {
             self.session_derived_cache_key(metadata)
@@ -1296,7 +1308,14 @@ impl ModelClient {
             model: model_info.slug.clone(),
             input,
             tools,
-            tool_choice: "auto".to_string(),
+            tool_choice: if matches!(
+                responses_metadata.request_kind,
+                Some(CodexResponsesRequestKind::Advisor)
+            ) {
+                "none".to_string()
+            } else {
+                "auto".to_string()
+            },
             parallel_tool_calls: prompt.parallel_tool_calls && !model_info.use_responses_lite,
             reasoning: Some(reasoning),
             store: false,

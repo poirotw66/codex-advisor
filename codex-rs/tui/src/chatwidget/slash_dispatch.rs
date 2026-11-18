@@ -41,6 +41,36 @@ const RAW_USAGE: &str = "Usage: /raw [on|off]";
 const USAGE_CHATGPT_LOGIN_REQUIRED: &str = "Sign in with ChatGPT to use /usage.";
 
 impl ChatWidget {
+    fn select_advisor_model(&mut self, model: &str) {
+        if model != "off" {
+            let available = self.model_catalog.try_list_models().unwrap_or_default();
+            if !available
+                .iter()
+                .any(|preset| preset.show_in_picker && preset.model == model)
+            {
+                self.add_error_message(format!(
+                    "Advisor model is unavailable: {model}. Use a model ID from /model."
+                ));
+                return;
+            }
+            if self.current_model() == model {
+                self.add_error_message(
+                    "Choose an advisor model different from the current model.".to_string(),
+                );
+                return;
+            }
+        }
+
+        self.set_queue_autosend_suppressed(/*suppressed*/ true);
+        self.app_event_tx.send(AppEvent::PersistAdvisorSelection {
+            model: model.to_string(),
+        });
+    }
+
+    pub(crate) fn set_advisor_model(&mut self, model: String) {
+        self.config.advisor_model = Some(model);
+    }
+
     /// Dispatch a bare slash command and record its staged local-history entry.
     ///
     /// The composer stages history before returning `InputResult::Command`; this wrapper commits
@@ -371,6 +401,13 @@ impl ChatWidget {
                 self.session_telemetry
                     .counter("codex.thread.rename", /*inc*/ 1, &[]);
                 self.show_rename_prompt();
+            }
+            SlashCommand::Advisor => {
+                let model = self.config.advisor_model.as_deref().unwrap_or("off");
+                self.add_info_message(
+                    format!("Configured advisor: {model}"),
+                    Some("Use /advisor <model-id> or /advisor off.".to_string()),
+                );
             }
             SlashCommand::Model => {
                 self.open_model_popup();
@@ -803,6 +840,9 @@ impl ChatWidget {
             return;
         }
         match cmd {
+            SlashCommand::Advisor => {
+                self.select_advisor_model(trimmed);
+            }
             SlashCommand::Model if !trimmed.is_empty() => {
                 self.handle_model_command_args(trimmed);
                 self.app_event_tx.send(AppEvent::SettingsSelectionClosed);
@@ -1313,6 +1353,13 @@ impl ChatWidget {
             | SlashCommand::Voice
             | SlashCommand::Recap
             | SlashCommand::TestApproval => QueueDrain::Continue,
+            SlashCommand::Advisor => {
+                if self.input_queue.suppress_queue_autosend {
+                    QueueDrain::Stop
+                } else {
+                    QueueDrain::Continue
+                }
+            }
             SlashCommand::Cd => match self.thread_id {
                 Some(thread_id) if self.can_change_working_directory(thread_id) => QueueDrain::Stop,
                 _ => QueueDrain::Continue,

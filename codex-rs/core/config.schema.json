@@ -7691,6 +7691,10 @@
   },
   "description": "Base config deserialized from ~/.codex/config.toml.",
   "properties": {
+    "advisor_model": {
+      "description": "Optional second-opinion model used by the advisor tool. \"off\" disables it.",
+      "type": "string"
+    },
     "agents": {
       "allOf": [
         {

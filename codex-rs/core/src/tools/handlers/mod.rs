@@ -1,3 +1,4 @@
+pub(crate) mod advisor;
 pub(crate) mod apply_patch;
 pub(crate) mod apply_patch_spec;
 mod current_time;

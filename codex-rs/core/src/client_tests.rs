@@ -2953,3 +2953,57 @@ async fn inference_tools_changes_follow_full_specs_across_turns() {
         );
     }
 }
+
+#[test]
+fn advisor_request_contains_only_the_brief_and_no_tools() -> anyhow::Result<()> {
+    let mut client = test_model_client(SessionSource::Cli);
+    client.session_id_override = Some("parent-cache-session".to_string());
+    let mut metadata = CodexResponsesMetadata::new(
+        TEST_INSTALLATION_ID.to_string(),
+        "advisor-session".to_string(),
+        "advisor-thread".to_string(),
+        "advisor-window".to_string(),
+    );
+    metadata.request_kind = Some(crate::responses_metadata::CodexResponsesRequestKind::Advisor);
+    assert_eq!(client.responses_session_id(&metadata), "advisor-session");
+    let brief = "Check whether the reported failure follows from the evidence.";
+    let prompt = crate::session::advisor::advisor_prompt(brief);
+
+    for use_responses_lite in [false, true] {
+        let mut model_info = test_model_info();
+        model_info.use_responses_lite = use_responses_lite;
+        let request = client.build_responses_request(
+            &prompt,
+            &model_info,
+            /*effort*/ None,
+            codex_protocol::config_types::ReasoningSummary::None,
+            /*service_tier*/ None,
+            &metadata,
+            /*include_internal*/ true,
+        )?;
+
+        assert_eq!(request.tool_choice, "none");
+        assert_eq!(request.prompt_cache_key, None);
+        assert!(!request.parallel_tool_calls);
+        assert!(!request.store);
+        assert_eq!(request.input.len(), 2);
+        assert!(matches!(
+            request.input.last(),
+            Some(ResponseItem::Message { role, content, .. })
+                if role == "user" && content == &[ContentItem::InputText { text: brief.to_string() }]
+        ));
+        assert!(
+            request
+                .input
+                .iter()
+                .all(|item| matches!(item, ResponseItem::Message { .. }))
+        );
+        let wire = serde_json::to_value(&request)?;
+        assert!(
+            wire.get("tools")
+                .is_none_or(|value| value.as_array().is_some_and(Vec::is_empty))
+        );
+        assert!(wire.get("previous_response_id").is_none());
+    }
+    Ok(())
+}

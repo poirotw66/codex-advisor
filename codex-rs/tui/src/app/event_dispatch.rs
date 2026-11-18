@@ -2878,6 +2878,45 @@ impl App {
                     let _ = (preset, mode, profile_selection);
                 }
             }
+            AppEvent::PersistAdvisorSelection { model } => {
+                let edit = codex_app_server_protocol::ConfigEdit {
+                    key_path: "advisor_model".to_string(),
+                    value: serde_json::json!(model),
+                    merge_strategy: codex_app_server_protocol::MergeStrategy::Replace,
+                };
+                match crate::config_update::write_config_batch(app_server.request_handle(), vec![edit])
+                    .await
+                {
+                    Ok(_) => {
+                        let cwd = self.chat_widget.config_ref().cwd.display().to_string();
+                        match crate::config_update::read_effective_config(app_server.request_handle(), cwd).await {
+                            Ok(read) => {
+                                let configured = read.config.additional
+                                    .get("advisor_model")
+                                    .and_then(serde_json::Value::as_str)
+                                    .unwrap_or("off");
+                                self.config.advisor_model = Some(configured.to_string());
+                                self.chat_widget.set_advisor_model(configured.to_string());
+                                let message = if configured != model {
+                                    format!("Advisor preference saved. Effective configuration: {configured}.")
+                                } else if configured == "off" {
+                                    "Advisor preference saved as off.".to_string()
+                                } else {
+                                    format!("Advisor preference saved as {configured}. Consultations use additional tokens.")
+                                };
+                                self.chat_widget.add_info_message(message, /*hint*/ None);
+                            }
+                            Err(err) => self.chat_widget.add_warning_message(format!(
+                                "Advisor preference saved, but the effective configuration could not be confirmed: {err}"
+                            )),
+                        }
+                    }
+                    Err(err) => self.chat_widget.report_config_save_error(format!(
+                        "Failed to save advisor model: {err}"
+                    )),
+                }
+                self.app_event_tx.send(AppEvent::SettingsSelectionClosed);
+            }
             AppEvent::PersistModelSelection { model, effort } => {
                 self.persist_default_model_selection(app_server.request_handle(), model, effort)
                     .await;

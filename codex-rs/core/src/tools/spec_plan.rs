@@ -1411,6 +1411,21 @@ fn add_core_utility_tools(context: &CoreToolPlanContext<'_>, registry: &mut Tool
         registry.add(RequestPermissionsHandler);
     }
 
+    if !turn_context.session_source.is_non_root_agent()
+        && let Some(model) = turn_context.config.advisor_model.as_deref()
+        && model != "off"
+        && model != context.model_info.slug
+        && turn_context
+            .available_models
+            .iter()
+            .any(|preset| preset.show_in_picker && preset.model == model)
+    {
+        registry.add_with_exposure(
+            crate::tools::handlers::advisor::AdvisorHandler::new(model.to_string()),
+            ToolExposure::DirectModelOnly,
+        );
+    }
+
     if features.enabled(Feature::TokenBudget) {
         let model_messages = ResolvedModelMessages::from_model(context.model_info);
         let messages = model_messages.context_management();
