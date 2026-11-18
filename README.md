@@ -1,3 +1,53 @@
+# Codex Advisor
+
+Codex Advisor adds a second-opinion model to OpenAI Codex CLI 0.169.0. Choose the skill for on-demand consultations in an existing Codex installation. Install the Apple Silicon CLI for the native `/advisor` command and model-initiated consultations.
+
+## Use the skill in your existing Codex
+
+Paste the installation request into a Codex chat.
+
+```text
+$skill-installer Install the advisor skill from https://github.com/poirotw66/codex-advisor/tree/advisor-v0.1.0/skills/advisor
+```
+
+Open a new chat after installation. Use the skill to request a second opinion.
+
+```text
+$advisor Challenge the riskiest assumption in my plan before I implement it.
+```
+
+With stock Codex, the skill asks a separate subagent for advice when the client supports model selection for subagents. The subagent inherits the parent chat's permissions. [Skill instructions](./skills/advisor/SKILL.md)
+
+## Install the CLI on an Apple Silicon Mac
+
+Paste this block into a terminal to download, verify, and install the [v0.1.0 release](https://github.com/poirotw66/codex-advisor/releases/tag/advisor-v0.1.0).
+
+```sh
+(
+  set -eu
+  release_url=https://github.com/poirotw66/codex-advisor/releases/download/advisor-v0.1.0
+  archive=codex-advisor-aarch64-apple-darwin.tar.gz
+  download_dir=$(mktemp -d)
+  trap 'rm -rf "$download_dir"' EXIT
+  cd "$download_dir"
+  curl -fLO "$release_url/$archive"
+  curl -fLO "$release_url/$archive.sha256"
+  shasum -a 256 -c "$archive.sha256"
+  mkdir -p "$HOME/.local"
+  tar -xzf "$archive" -C "$HOME/.local"
+)
+```
+
+Start the CLI from a terminal.
+
+```sh
+"$HOME/.local/bin/codex-advisor"
+```
+
+In the CLI, use `/model` to select your main model. Enter `/advisor gpt-6.2-sol` if that model is available and differs from your main model. Use `/advisor` to check the setting and `/advisor off` to turn it off. The launcher starts a local server for this build, so you can keep your existing `codex` installation. [Advisor commands](./docs/slash_commands.md#advisor)
+
+## OpenAI Codex
+
 <p align="center"><strong>Codex CLI</strong> is a coding agent from OpenAI that runs locally on your computer.
 <p align="center">
   <img src="https://github.com/openai/codex/blob/main/.github/codex-cli-splash.png" alt="Codex CLI splash" width="80%" />
@@ -9,7 +59,7 @@ If you want Codex in your code editor (VS Code, Cursor, Windsurf), <a href="http
 
 ---
 
-## Quickstart
+## Upstream Codex quickstart
 
 ### Installing and running Codex CLI
 
