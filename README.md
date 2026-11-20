@@ -18,6 +18,19 @@ $advisor Challenge the riskiest assumption in my plan before I implement it.
 
 With stock Codex, the skill asks a separate subagent for advice when the client supports model selection for subagents. The subagent inherits the parent chat's permissions. [Skill instructions](./skills/advisor/SKILL.md)
 
+### Set defaults for the skill
+
+The `advisor-v0.1.0` tag predates this setting. To install the skill from this checkout, copy `skills/advisor` into `$CODEX_HOME/skills` or `~/.codex/skills`.
+
+Create `~/.codex/advisor.toml` with either or both settings. If you set `CODEX_HOME`, create `advisor.toml` there.
+
+```toml
+model = "gpt-6.1-terra"
+reasoning_effort = "low"
+```
+
+Choose a model that your client and account support for subagents and an effort that the model supports. The model must differ from your main model. To override either default for one consultation, specify it in the `$advisor` request. The file applies to the skill's subagent workflow. The native CLI uses its own settings. [Advisor commands](./docs/slash_commands.md#advisor)
+
 ## Install the CLI on an Apple Silicon Mac
 
 Paste this block into a terminal to download, verify, and install the [v0.1.0 release](https://github.com/poirotw66/codex-advisor/releases/tag/advisor-v0.1.0).
